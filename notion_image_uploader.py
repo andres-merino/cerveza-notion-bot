@@ -93,11 +93,12 @@ def enviar_cervezas_a_notion(datos, lugar):
         )
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Uso: python notion_image_uploader.py ruta/al/archivo.pdf")
+    if len(sys.argv) != 3:
+        print("Uso: python notion_image_uploader.py <ruta_imagen> <lugar>")
         sys.exit(1)
 
     ruta_img = sys.argv[1]
-    texto = analizar_imagen_cerveza(ruta_img)
-    enviar_cervezas_a_notion(texto)
-    print("Imagen procesado y enviado a Notion con éxito.")
+    lugar = sys.argv[2]
+    datos = analizar_imagen_cerveza(ruta_img)
+    enviar_cervezas_a_notion(datos, lugar)
+    print("Imagen procesada y enviada a Notion con éxito.")

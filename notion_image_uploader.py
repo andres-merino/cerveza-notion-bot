@@ -87,10 +87,13 @@ def enviar_cervezas_a_notion(datos, lugar):
             },
         }
 
-        notion.pages.create(
-            parent={"database_id": NOTION_DATABASE_ID},
-            properties=propiedades
-        )
+        try:
+            notion.pages.create(
+                parent={"database_id": NOTION_DATABASE_ID},
+                properties=propiedades
+            )
+        except Exception as e:
+            raise Exception(f"Error al crear la página en Notion: {e}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -100,5 +103,8 @@ if __name__ == "__main__":
     ruta_img = sys.argv[1]
     lugar = sys.argv[2]
     datos = analizar_imagen_cerveza(ruta_img)
-    enviar_cervezas_a_notion(datos, lugar)
-    print("Imagen procesada y enviada a Notion con éxito.")
+    try:
+        enviar_cervezas_a_notion(datos, lugar)
+        print("Imagen procesada y enviada a Notion con éxito.")
+    except Exception as e:
+        print(f"Error al enviar la información a Notion: {e}")

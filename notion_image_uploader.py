@@ -36,6 +36,7 @@ Del siguiente texto, extrae una lista con:
 - Nombre de la cerveza
 - Grados de alcohol (ABV) (sin porcentaje)
 - IBU
+Si no existe la información de ABV o IBU, pon 0 en su lugar.
 
 Devuelve un JSON de cervezas con esta estructura:
 {

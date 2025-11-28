@@ -4,6 +4,7 @@ from openai import OpenAI
 from notion_client import Client
 from keys import OPENAI_API_KEY, NOTION_TOKEN, NOTION_DATABASE_ID
 import sys
+import json
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 notion = Client(auth=NOTION_TOKEN)
@@ -13,51 +14,48 @@ def encode_image(image_path):
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 def analizar_imagen_cerveza(ruta_imagen):
-
+    
     base64_image = encode_image(ruta_imagen)
-
-    response = client.responses.create(
-        model="gpt-4o-mini",
-        input=[{
-            "role": "user",
-            "content": [
-                {"type": "input_text", 
-                 "text": "Extrae la siguiente información de todas las cervezas que encuentres en esta imagen: Nombre, Grados de alcohol (ABV) (sin porcentaje), IBU." 
-                },
-                {"type": "input_image",
-                 "image_url": f"data:image/jpeg;base64,{base64_image}",
-                },
-            ],
-        }],
-    )
     
-    prompt = """
-Del siguiente texto, extrae una lista con:
-- Nombre de la cerveza
-- Grados de alcohol (ABV) (sin porcentaje)
-- IBU
-Si no existe la información de ABV o IBU, pon 0 en su lugar.
-
-Devuelve un JSON de cervezas con esta estructura:
-{
-    "cervezas": [
-        {
-            "nombre": "Nombre de la cerveza",
-            "abv": "Grados de alcohol (ABV) (sin porcentaje)",
-            "ibu": "IBU"
-        },
-        ...
-    ]
-}
-""" + response.output_text
+    # URL de la imagen en formato base64
+    image_url = f"data:image/jpeg;base64,{base64_image}"
     
+    # Instrucciones para el modelo (System Prompt)
+    system_prompt = """
+    Eres un asistente experto en análisis de menús de cervezas.
+    Analiza la imagen proporcionada y extrae la siguiente información de cada cerveza que encuentres:
+    - Nombre de la cerveza
+    - Grados de alcohol (ABV) (sin el símbolo de porcentaje)
+    - IBU (Unidades Internacionales de Amargor)
+
+    Si la información de ABV o IBU no se encuentra visible en la imagen para alguna cerveza, asigna el valor 0 en su lugar.
+    Debes devolver estrictamente un objeto JSON con la estructura solicitada, que contenga un array de cervezas.
+    """
+
+    # Llamada única al modelo (visión y extracción JSON)
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        response_format={ "type": "json_object" },
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [
+                {
+                    "type": "text", 
+                    "text": "Extrae la información de todas las cervezas visibles en esta imagen y devuélvela como un objeto JSON con el array 'cervezas' y las claves 'nombre', 'abv' e 'ibu' para cada cerveza.",
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {"url": image_url},
+                },
+            ]},
+        ],
+        # Configuración para forzar la respuesta en formato JSON
+        response_format={"type": "json_object"}, 
+        temperature=0.0
     )
-    return eval(response.choices[0].message.content)
+    
+    # La respuesta es un string JSON que necesita ser cargado en Python
+    json_str = response.choices[0].message.content
+    return json.loads(json_str)
 
 def enviar_cervezas_a_notion(datos, lugar):
     # Fecha actual sin hora ISO 8601

@@ -24,7 +24,7 @@ def acceso_restringido(func):
 @bot.message_handler(commands=['start'])
 @acceso_restringido
 def start(message):
-    bot.send_message(message.chat.id, "🍻 ¿Dónde estás probando las cervezas? (v1.5)")
+    bot.send_message(message.chat.id, "🍻 ¿Dónde estás probando las cervezas? (v1.1)")
     usuarios[message.chat.id] = {"estado": "esperando_lugar"}
 
 # Capturar el lugar

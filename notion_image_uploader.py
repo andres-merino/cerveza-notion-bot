@@ -4,7 +4,7 @@ from openai import OpenAI
 from notion_client import Client
 from keys import OPENAI_API_KEY, NOTION_TOKEN, NOTION_DATABASE_ID
 import sys
-import json
+from pydantic import BaseModel
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 notion = Client(auth=NOTION_TOKEN)
@@ -12,6 +12,13 @@ notion = Client(auth=NOTION_TOKEN)
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
+
+class Cerveza(BaseModel):
+    nombre: str
+    abv: float
+    ibu: int
+class CervezaResponse(BaseModel):
+    cervezas: list[Cerveza]
 
 def analizar_imagen_cerveza(ruta_imagen):
     
@@ -23,45 +30,37 @@ def analizar_imagen_cerveza(ruta_imagen):
     # Instrucciones para el modelo (System Prompt)
     system_prompt = """
     Eres un asistente experto en análisis de menús de cervezas.
-    Analiza la imagen proporcionada y extrae la siguiente información de cada cerveza que encuentres:
-    - Nombre de la cerveza
-    - Grados de alcohol (ABV) (sin el símbolo de porcentaje)
-    - IBU (Unidades Internacionales de Amargor)
-
-    Si la información de ABV o IBU no se encuentra visible en la imagen para alguna cerveza, asigna el valor 0 en su lugar.
-    Debes devolver estrictamente un objeto JSON con la estructura solicitada, que contenga un array de cervezas.
     """
 
     # Llamada única al modelo (visión y extracción JSON)
-    response = client.chat.completions.create(
+    response = client.responses.parse(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": [
-                {
-                    "type": "text", 
-                    "text": "Extrae la información de todas las cervezas visibles en esta imagen y devuélvela como un objeto JSON con el array 'cervezas' y las claves 'nombre', 'abv' e 'ibu' para cada cerveza.",
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {"url": image_url},
-                },
-            ]},
+        input=[
+            {
+                "role": "system",
+                "content": [{"type": "input_text", "text": system_prompt}],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": "Extrae nombre, ABV e IBU de todas las cervezas visibles."},
+                    {"type": "input_image", "image_url": image_url},
+                ],
+            },
         ],
-        # Configuración para forzar la respuesta en formato JSON
-        response_format={"type": "json_object"}, 
+        text_format=CervezaResponse,
         temperature=0.0
     )
     
-    # La respuesta es un string JSON que necesita ser cargado en Python
-    json_str = response.choices[0].message.content
-    return json.loads(json_str)
+    return response.output_parsed
 
 def enviar_cervezas_a_notion(datos, lugar):
     # Fecha actual sin hora ISO 8601
     fecha_actual = datetime.now().strftime("%Y-%m-%d")
+    
+    cervezas = [c.model_dump() for c in datos.cervezas]
 
-    for cerveza in datos["cervezas"]:
+    for cerveza in cervezas:
         nombre = cerveza.get("nombre", "Sin nombre")
         abv = float(cerveza.get("abv", 0))
         ibu = int(cerveza.get("ibu", 0))

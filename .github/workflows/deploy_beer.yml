@@ -23,5 +23,5 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_APP_USER }}@${{ secrets.SERVER_APP }} -p ${{ secrets.SERVER_APP_PORT }} << 'EOF'
             cd /srv/servicios/cerveza-notion-bot
             git pull origin main
-            sudo systemctl restart cerveza_notion_bot.service
+            sudo systemctl restart cerveza-notion-bot.service
           EOF
